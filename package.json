@@ -1,0 +1,27 @@
+{
+	"name": "clirx-storage",
+	"version": "1.0.0",
+	"description": "this is for storage file",
+	"main": "server.js",
+	"type": "module",
+	"scripts": {
+		"start": "node server.js",
+		"dev": "nodemon server.js"
+	},
+	"_moduleAliases": {
+		"@": "./src"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@prisma/client": "^6.2.1",
+		"express": "^4.21.2",
+		"express-fileupload": "^1.5.1",
+		"install": "^0.13.0",
+		"module-alias": "^2.2.3",
+		"nodemon": "^3.1.9",
+		"npm": "^11.0.0",
+		"prisma": "^6.2.1",
+		"uuid": "^11.0.5"
+	}
+}
