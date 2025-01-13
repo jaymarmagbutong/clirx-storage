@@ -21,6 +21,8 @@ export const uploadFile = async (req) => {
     const files = Array.isArray(req.files.file) ? req.files.file : [req.files.file];
     const uploadResults = [];
     const baseUrl = `${req.protocol}://${req.get('host')}/api/storage/files/`;
+    
+    // Iterate over each file
     for (const file of files) {
         const originalName = path.basename(file.name);
         const uniqueName = `${uuidv4()}_${originalName}`;
@@ -53,6 +55,7 @@ export const uploadFile = async (req) => {
                 originalName: savedFile.originalName,
                 uniqueName: savedFile.uniqueName,
                 message: 'File uploaded successfully',
+                baseurl: baseUrl,
             });
 
         } catch (error) {
@@ -63,5 +66,19 @@ export const uploadFile = async (req) => {
         }
     }
 
-    return uploadResults;
+    // Format the response according to your requirement
+    const response = {
+        success: true,
+        data: {
+            baseurl: baseUrl,
+            messages: uploadResults.map((result) => result.message),
+            files: uploadResults.map((result) => result.uniqueName),
+            isImages: uploadResults.map(() => true),  // Assuming all files are images
+            
+        },
+    };
+
+    console.log(response);
+
+    return response;
 };

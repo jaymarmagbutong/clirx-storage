@@ -16,7 +16,7 @@ datasource db {
 model File {
   id          Int      @id @default(autoincrement())
   originalName String   @db.Text   // Change String to Text for longer content
-  uniqueName  String   @db.Text   // Change String to Text for longer content
+  uniqueName  String    @unique // Change String to Text for longer content
   filePath    String   @db.Text   // Change String to Text for longer content
   size        Int
   uploadedAt  DateTime
