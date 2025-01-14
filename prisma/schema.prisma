@@ -22,3 +22,4 @@ model File {
   uploadedAt  DateTime
   source      String   @db.Text   // Change String to Text for source if needed
 }
+

@@ -21,11 +21,11 @@ export const uploadFile = async (req) => {
     const files = Array.isArray(req.files.file) ? req.files.file : [req.files.file];
     const uploadResults = [];
     const baseUrl = `${req.protocol}://${req.get('host')}/api/storage/files/`;
-    
     // Iterate over each file
     for (const file of files) {
         const originalName = path.basename(file.name);
-        const uniqueName = `${uuidv4()}_${originalName}`;
+        const fileExtension = path.extname(originalName);
+        const uniqueName = `${Date.now()}_${uuidv4()}${fileExtension}`;
         const filePath = path.join(uploadDirectory, uniqueName);
         const fileUrl = baseUrl + uniqueName;
 
@@ -55,6 +55,7 @@ export const uploadFile = async (req) => {
                 originalName: savedFile.originalName,
                 uniqueName: savedFile.uniqueName,
                 message: 'File uploaded successfully',
+                filePath: filePath,
                 baseurl: baseUrl,
             });
 
@@ -74,11 +75,9 @@ export const uploadFile = async (req) => {
             messages: uploadResults.map((result) => result.message),
             files: uploadResults.map((result) => result.uniqueName),
             isImages: uploadResults.map(() => true),  // Assuming all files are images
-            
         },
     };
 
-    console.log(response);
 
     return response;
 };

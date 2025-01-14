@@ -5,7 +5,7 @@ import path from 'path';
 const uploadDirectory = path.resolve('uploads');
 
 export const getFile = async (fileName) => {
-    
+    console.log(fileName);
     const safeFileName = path.basename(fileName); // Prevent directory traversal
     const filePath = path.join(uploadDirectory, safeFileName);
 
