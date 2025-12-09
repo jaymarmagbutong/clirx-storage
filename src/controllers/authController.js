@@ -1,9 +1,11 @@
 import { generateToken, revokeToken, verifyToken } from '../services/auth/jwtHelper.js';
 
+
 export const loginUser = async (req, res) => {
 
     const { email, password } = await req.body;
     console.log(email   + " " + password);
+    
     try {
         const user = {
             id: 1,
@@ -28,7 +30,7 @@ export const loginUser = async (req, res) => {
 };
 
 
-export const signoutUser = async (req, res) => {
+export const signOutUser = async (req, res) => {
     try {
         const token = req.body.token;
 
@@ -66,3 +68,4 @@ export const verifyUser = async (req, res) => {
         res.status(500).send({ error: 'Failed to verify token' });
     }
 }
+

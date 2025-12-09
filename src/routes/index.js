@@ -1,12 +1,16 @@
 import { Router } from 'express';
-import storageRouter from './storage.js'; // Ensure storage.js exists in the same directory
-import authRouter from './auth.js';
+import authRoutes from './auth.js';
+import storageRoutes from './storage.js';
+import userRoutes from './user.js';
+import folderRoutes from './folder.js';
+
 
 const router = Router();
 
-router.use('/storage', storageRouter);
-
-router.use('/auth', authRouter);
+router.use('/auth', authRoutes);
+router.use('/storage', storageRoutes);
+router.use('/user', userRoutes); 
+router.use('/folder', folderRoutes);
 
 
 export default router;

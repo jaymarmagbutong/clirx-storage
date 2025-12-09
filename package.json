@@ -1,5 +1,5 @@
 {
-	"name": "clirx-storage",
+	"name": "appt-storage",
 	"version": "1.0.0",
 	"description": "this is for storage file",
 	"main": "server.js",
@@ -17,7 +17,8 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"@prisma/client": "^6.2.1",
+		"@prisma/client": "^6.19.0",
+		"bcrypt": "^6.0.0",
 		"cors": "^2.8.5",
 		"express": "^4.21.2",
 		"express-fileupload": "^1.5.1",
@@ -28,7 +29,6 @@
 		"multer": "^1.4.5-lts.1",
 		"nodemon": "^3.1.9",
 		"npm": "^11.0.0",
-		"prisma": "^6.2.1",
 		"uuid": "^11.0.5"
 	},
 	"compilerOptions": {
@@ -37,5 +37,8 @@
 				"./src/*"
 			]
 		}
+	},
+	"devDependencies": {
+		"prisma": "^6.19.0"
 	}
 }

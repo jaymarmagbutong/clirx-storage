@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const secretKey = process.env.JWT_SECRET || 'd4f7a8caa3c6a9f2f4d6a0b4c1d9e7f8a7b2c3d4e6f1a8c2b3d9f7a8e6b3c4d1'; // Use a strong, secure key and store it in .env
-const expiresIn = '1y'; // Token expires in 1 minute
+const expiresIn = '10y'; // Token expires in 1 minute
 const tokenBlacklist = new Set();
 
 export const generateToken = (payload) => {

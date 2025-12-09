@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,13 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model File {
-  id          Int      @id @default(autoincrement())
-  originalName String   @db.Text   // Change String to Text for longer content
-  uniqueName  String    @unique // Change String to Text for longer content
-  filePath    String   @db.Text   // Change String to Text for longer content
-  size        Int
-  uploadedAt  DateTime
-  source      String   @db.Text   // Change String to Text for source if needed
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files     File[]
+  folders   Folder[]
 }
 
+model Folder {
+  id        Int       @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  ownerId   Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+ 
+  owner     User      @relation(fields: [ownerId], references: [id])
+  parent    Folder?   @relation("FolderChildren", fields: [parentId], references: [id])
+  children  Folder[]  @relation("FolderChildren")
+  files     File[]
+
+  @@index([ownerId])
+  @@index([parentId])
+}
+
+model File {
+  id           Int      @id @default(autoincrement())
+  folderId     Int?
+  ownerId      Int
+  originalName String   @db.Text
+  uniqueName   String   @unique
+  filePath     String   @db.Text
+  size         Int
+  uploadedAt   DateTime @default(now())
+   source    String    @db.Text
+  owner    User     @relation(fields: [ownerId], references: [id])
+  folder   Folder?  @relation(fields: [folderId], references: [id])
+  versions FileVersion[]
+
+  @@index([ownerId])
+  @@index([folderId])
+}
+
+model FileVersion {
+  id          Int      @id @default(autoincrement())
+  fileId      Int
+  versionNum  Int
+  storagePath String   @db.Text
+  size        Int
+  createdAt   DateTime @default(now())
+
+  file File @relation(fields: [fileId], references: [id])
+
+  @@unique([fileId, versionNum])
+}

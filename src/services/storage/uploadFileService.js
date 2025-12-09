@@ -55,6 +55,8 @@ export const uploadFile = async (req) => {
                     size: file.size,
                     uploadedAt: new Date(),
                     source: '',
+                    ownerId: 1, 
+                    folderId : 1, 
                 },
             });
 
