@@ -46,6 +46,22 @@ export const uploadFile = async (req) => {
             // Save file to disk
             await writeFile(filePath, file.data);
 
+            // Extract dynamic ownerId and folderId
+            const ownerId = req.user?.userId ? parseInt(req.user.userId, 10) : 1;
+            
+            let folderId = null;
+            if (req.body && req.body.folderId) {
+                const parsedFolderId = parseInt(req.body.folderId, 10);
+                if (!isNaN(parsedFolderId)) {
+                    folderId = parsedFolderId;
+                }
+            } else if (req.query && req.query.folderId) {
+                const parsedFolderId = parseInt(req.query.folderId, 10);
+                if (!isNaN(parsedFolderId)) {
+                    folderId = parsedFolderId;
+                }
+            }
+
             // Save file metadata to the database
             const savedFile = await prisma.file.create({
                 data: {
@@ -55,8 +71,8 @@ export const uploadFile = async (req) => {
                     size: file.size,
                     uploadedAt: new Date(),
                     source: '',
-                    ownerId: 1, 
-                    folderId : 1, 
+                    ownerId: ownerId, 
+                    folderId: folderId, 
                 },
             });
 

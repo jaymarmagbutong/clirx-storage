@@ -1,19 +1,26 @@
 import { generateToken, revokeToken, verifyToken } from '../services/auth/jwtHelper.js';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
+const prisma = new PrismaClient();
 
 export const loginUser = async (req, res) => {
-
-    const { email, password } = await req.body;
-    console.log(email   + " " + password);
-    
     try {
-        const user = {
-            id: 1,
-            email: 'magbutongjaymar@gmail.com',
-            password: 'password',
-        };
+        const { email, password } = req.body;
+        console.log(email + " attempt login");
+        
+        // Find user by email
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
 
-        if (user.email !== email || user.password !== password) {
+        if (!user) {
+            return res.status(401).send({ error: 'Invalid email or password' });
+        }
+
+        // Compare password using bcrypt
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
             return res.status(401).send({ error: 'Invalid email or password' });
         }
 
