@@ -62,6 +62,14 @@ export const uploadFile = async (req) => {
                 }
             }
 
+            // Extract isPrivate from req.body or req.query
+            let isPrivate = false;
+            if (req.body && (req.body.isPrivate === 'true' || req.body.isPrivate === true)) {
+                isPrivate = true;
+            } else if (req.query && (req.query.isPrivate === 'true' || req.query.isPrivate === true)) {
+                isPrivate = true;
+            }
+
             // Save file metadata to the database
             const savedFile = await prisma.file.create({
                 data: {
@@ -73,6 +81,7 @@ export const uploadFile = async (req) => {
                     source: '',
                     ownerId: ownerId, 
                     folderId: folderId, 
+                    isPrivate: isPrivate,
                 },
             });
 

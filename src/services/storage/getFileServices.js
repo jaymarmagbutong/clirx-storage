@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
 
-
+const prisma = new PrismaClient();
 const uploadDirectory = path.resolve('uploads');
 
 export const getFile = async (fileName) => {
@@ -13,5 +14,18 @@ export const getFile = async (fileName) => {
         throw new Error('File not found');
     }
 
-    return fs.createReadStream(filePath);
+    const fileRecord = await prisma.file.findUnique({
+        where: {
+            uniqueName: safeFileName
+        }
+    });
+
+    if (!fileRecord) {
+        throw new Error('File not found in database');
+    }
+
+    return {
+        fileRecord,
+        stream: fs.createReadStream(filePath)
+    };
 };

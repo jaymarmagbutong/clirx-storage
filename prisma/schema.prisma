@@ -45,6 +45,7 @@ model File {
   size         Int
   uploadedAt   DateTime @default(now())
    source    String    @db.Text
+  isPrivate Boolean   @default(false)
   owner    User     @relation(fields: [ownerId], references: [id])
   folder   Folder?  @relation(fields: [folderId], references: [id])
   versions FileVersion[]
