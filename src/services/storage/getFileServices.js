@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 const uploadDirectory = path.resolve('uploads');
 
 export const getFile = async (fileName) => {
-    console.log(fileName);
     const safeFileName = path.basename(fileName); // Prevent directory traversal
     const filePath = path.join(uploadDirectory, safeFileName);
 
@@ -15,9 +14,7 @@ export const getFile = async (fileName) => {
     }
 
     const fileRecord = await prisma.file.findUnique({
-        where: {
-            uniqueName: safeFileName
-        }
+        where: { uniqueName: safeFileName }
     });
 
     if (!fileRecord) {
@@ -26,6 +23,7 @@ export const getFile = async (fileName) => {
 
     return {
         fileRecord,
+        filePath,
         stream: fs.createReadStream(filePath)
     };
 };

@@ -235,6 +235,66 @@ curl http://localhost:8000/api/folder/5 \
 
 ---
 
+### 5d. Rename Folder
+Renames an existing folder record in the system.
+
+- **URL**: `/api/folder/:id`
+- **Method**: `PATCH`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Body**:
+  ```json
+  {
+    "name": "New Folder Name"
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "folder": {
+      "id": 5,
+      "name": "New Folder Name",
+      "parentId": null,
+      "ownerId": 1,
+      "createdAt": "2026-05-26T17:43:51.213Z",
+      "updatedAt": "2026-05-28T08:02:00.000Z"
+    }
+  }
+  ```
+
+#### Example Usage
+```bash
+curl -X PATCH http://localhost:8000/api/folder/5 \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{"name": "New Folder Name"}'
+```
+
+---
+
+### 5e. Delete Folder (Recursive)
+Permanently unlinks all physical file assets in this folder and its subdirectories from disk, and deletes the Prisma database records in cascade order.
+
+- **URL**: `/api/folder/:id`
+- **Method**: `DELETE`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Folder and its contents deleted successfully"
+  }
+  ```
+
+#### Example Usage
+```bash
+curl -X DELETE http://localhost:8000/api/folder/5 \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
 ## 💾 File Operations
 
 ### 6. Upload File(s)

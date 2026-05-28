@@ -13,7 +13,20 @@ if (!fs.existsSync(uploadDirectory)) {
     fs.mkdirSync(uploadDirectory, { recursive: true });
 }
 
-const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+const imageExtensions   = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.ico'];
+const videoExtensions   = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v', '.3gp'];
+const audioExtensions   = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'];
+const documentExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.csv'];
+const archiveExtensions = ['.zip', '.rar', '.tar', '.gz', '.7z'];
+
+const getFileType = (ext) => {
+    if (imageExtensions.includes(ext))    return 'image';
+    if (videoExtensions.includes(ext))    return 'video';
+    if (audioExtensions.includes(ext))    return 'audio';
+    if (documentExtensions.includes(ext)) return 'document';
+    if (archiveExtensions.includes(ext))  return 'archive';
+    return 'other';
+};
 
 export const uploadFile = async (req) => {
     if (!req.files || !req.files.file) {
@@ -28,23 +41,29 @@ export const uploadFile = async (req) => {
     for (const file of files) {
         const originalName = path.basename(file.name);
         const fileExtension = path.extname(originalName).toLowerCase();
-        const isImage = imageExtensions.includes(fileExtension);
+        const fileType = getFileType(fileExtension);  // 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'
+        const isImage = fileType === 'image';
         const uniqueName = `${Date.now()}_${uuidv4()}${fileExtension}`;
         const filePath = path.join(uploadDirectory, uniqueName);
         const fileUrl = baseUrl + uniqueName;
 
-        if (file.size > 10 * 1024 * 1024) {
+        if (file.size > 5 * 1024 * 1024 * 1024) { // 5GB limit
             uploadResults.push({ 
                 fileName: originalName, 
-                message: 'File size exceeds limit', 
+                message: 'File size exceeds the 5GB limit', 
+                fileType,
                 isImage 
             });
             continue;
         }
 
         try {
-            // Save file to disk
-            await writeFile(filePath, file.data);
+            // Save file to disk (supports temp file streams and RAM buffers)
+            if (file.tempFilePath) {
+                await file.mv(filePath);
+            } else {
+                await writeFile(filePath, file.data);
+            }
 
             // Extract dynamic ownerId and folderId
             const ownerId = req.user?.userId ? parseInt(req.user.userId, 10) : 1;
@@ -92,6 +111,7 @@ export const uploadFile = async (req) => {
                 message: 'File uploaded successfully',
                 filePath: filePath,
                 baseurl: baseUrl,
+                fileType,
                 isImage,
             });
 
@@ -99,6 +119,7 @@ export const uploadFile = async (req) => {
             uploadResults.push({
                 originalName,
                 message: `Failed to upload: ${error.message}`,
+                fileType,
                 isImage,
             });
         }
@@ -112,6 +133,7 @@ export const uploadFile = async (req) => {
             messages: uploadResults.map((result) => result.message),
             files: uploadResults.map((result) => result.uniqueName),
             isImages: uploadResults.map((result) => result.isImage),
+            fileTypes: uploadResults.map((result) => result.fileType), // 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'
         },
     };
 
