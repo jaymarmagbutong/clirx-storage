@@ -11,22 +11,20 @@ export const listFiles = async (options = {}) => {
             const limitNum = parseInt(limit, 10) || 30;
             const skip = (pageNum - 1) * limitNum;
 
+            const where = {
+                isDeleted: false,
+                folderId: null, // Root-level files only — files in folders are shown in their folder view
+                ownerId: ownerId ? parseInt(ownerId, 10) : undefined
+            };
+
             const files = await prisma.file.findMany({
-                where: { 
-                    isDeleted: false,
-                    ownerId: ownerId ? parseInt(ownerId, 10) : undefined
-                },
+                where,
                 skip,
                 take: limitNum,
                 orderBy: { uploadedAt: 'desc' }
             });
 
-            const total = await prisma.file.count({
-                where: { 
-                    isDeleted: false,
-                    ownerId: ownerId ? parseInt(ownerId, 10) : undefined
-                }
-            });
+            const total = await prisma.file.count({ where });
 
             return {
                 files,
@@ -37,7 +35,8 @@ export const listFiles = async (options = {}) => {
 
         const files = await prisma.file.findMany({
             where: {
-                isDeleted: false
+                isDeleted: false,
+                folderId: null
             }
         });
         return files;
