@@ -3,8 +3,12 @@ import path from 'path';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
+import sharp from 'sharp';
+import ffmpegPath from 'ffmpeg-static';
+import { execFile } from 'child_process';
 
 const prisma = new PrismaClient();
+const execFilePromise = promisify(execFile);
 
 const uploadDirectory = path.resolve('uploads');
 const writeFile = promisify(fs.writeFile);
@@ -89,6 +93,39 @@ export const uploadFile = async (req) => {
                 isPrivate = true;
             }
 
+            // Automatically generate thumbnail in the backend if it is an image or video
+            let thumbnailUrl = null;
+            if (fileType === 'image' || fileType === 'video') {
+                try {
+                    const thumbDirectory = path.resolve('uploads/thumbnails');
+                    if (!fs.existsSync(thumbDirectory)) {
+                        fs.mkdirSync(thumbDirectory, { recursive: true });
+                    }
+                    const thumbUniqueName = `thumb_${path.basename(uniqueName, fileExtension)}.jpg`;
+                    const thumbPath = path.join(thumbDirectory, thumbUniqueName);
+
+                    if (fileType === 'image') {
+                        await sharp(filePath)
+                            .resize({ width: 200, height: 200, fit: 'inside', withoutEnlargement: true })
+                            .jpeg({ quality: 70 })
+                            .toFile(thumbPath);
+                        thumbnailUrl = `${req.protocol}://${req.get('host')}/api/storage/thumbnails/${thumbUniqueName}`;
+                    } else if (fileType === 'video') {
+                        await execFilePromise(ffmpegPath, [
+                            '-ss', '00:00:00.500',
+                            '-i', filePath,
+                            '-vf', 'scale=200:-1',
+                            '-vframes', '1',
+                            '-q:v', '4',
+                            '-y', thumbPath
+                        ]);
+                        thumbnailUrl = `${req.protocol}://${req.get('host')}/api/storage/thumbnails/${thumbUniqueName}`;
+                    }
+                } catch (thumbError) {
+                    console.error(`Failed to generate backend thumbnail for ${originalName}:`, thumbError);
+                }
+            }
+
             // Save file metadata to the database
             const savedFile = await prisma.file.create({
                 data: {
@@ -101,6 +138,7 @@ export const uploadFile = async (req) => {
                     ownerId: ownerId, 
                     folderId: folderId, 
                     isPrivate: isPrivate,
+                    thumbnail: thumbnailUrl,
                 },
             });
 

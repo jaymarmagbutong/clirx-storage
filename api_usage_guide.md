@@ -205,7 +205,7 @@ curl http://localhost:8000/api/folder/list \
 ---
 
 ### 5c. Get Folder (With Contents)
-Retrieves the details of a specific folder along with its subfolders (`children`) and files (`files`).
+Retrieves the details of a specific folder along with its subfolders (`children`), files (`files`), and the recursive breadcrumbs path of parent folders (`path`).
 
 - **URL**: `/api/folder/:id`
 - **Method**: `GET`
@@ -222,7 +222,14 @@ Retrieves the details of a specific folder along with its subfolders (`children`
       "createdAt": "2026-05-26T17:43:51.213Z",
       "updatedAt": "2026-05-26T17:43:51.213Z",
       "children": [],
-      "files": []
+      "files": [],
+      "path": [
+        {
+          "id": 2,
+          "name": "Root Projects",
+          "parentId": null
+        }
+      ]
     }
   }
   ```
@@ -411,8 +418,37 @@ curl http://localhost:8000/api/storage/files/1779817431230_ab79473a-5c9c-41d9-98
 
 ---
 
-### 9. Delete File
-Permanently unlinks the physical file from disk and deletes its metadata record from the Prisma MySQL database.
+### 8b. View / Stream Thumbnail
+Streams the pre-generated small-size thumbnail image (`200px` width) for a specific image or video file.
+
+- **URL**: `/api/storage/thumbnails/:fileName`
+- **Method**: `GET`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private file thumbnails)*
+
+> [!IMPORTANT]
+> - **Privacy Enforcement**: Private file thumbnails fully inherit the owner-only permission lock of the main file. Active JWT headers are verified, returning a `403 Forbidden` for other users or a `401 Unauthorized` if headers are omitted.
+
+- **Success Response (`200 OK`)**:
+  *(Inline JPEG image stream of the scaled thumbnail)*
+
+#### Example Usage (Public Thumbnail)
+```bash
+curl http://localhost:8000/api/storage/thumbnails/thumb_1779817431230_ab79473a.jpg \
+     --output thumb.jpg
+```
+
+#### Example Usage (Private Thumbnail)
+```bash
+curl http://localhost:8000/api/storage/thumbnails/thumb_1779817431230_ab79473a.jpg \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     --output thumb.jpg
+```
+
+---
+
+### 9. Delete File (Soft Delete)
+Soft-deletes a specific file from the active storage drive. The record is kept in the MySQL database (with `isDeleted` set to `true`) and the physical file remains safe on the disk under `uploads/`, allowing for easy restoration later via the Trash Bin.
 
 - **URL**: `/api/storage/files/:fileName`
 - **Method**: `DELETE`
@@ -430,3 +466,238 @@ Permanently unlinks the physical file from disk and deletes its metadata record 
 curl -X DELETE http://localhost:8000/api/storage/files/1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png \
      -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
+
+---
+
+### 9b. Update File Metadata (Single)
+Updates the metadata configurations of a specific file. Used to rename parent folders, toggle public/private privacy, or restore/soft-delete a file manually.
+
+- **URL**: `/api/storage/files/:fileName`
+- **Method**: `PATCH`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Body Fields**:
+  ```json
+  {
+    "folderId": 12,        // Optional. Parent folder ID to move the file, or null to move to Root Drive
+    "isPrivate": false,    // Optional. Boolean value to set public/private status
+    "isDeleted": false     // Optional. Set to false to restore a soft-deleted file!
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "id": 12,
+    "uniqueName": "1779817431230_ab...",
+    "folderId": 12,
+    "isPrivate": false,
+    "isDeleted": false
+  }
+  ```
+
+#### Example Usage (Restoring a File)
+```bash
+curl -X PATCH http://localhost:8000/api/storage/files/1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{"isDeleted": false}'
+```
+
+---
+
+### 9c. Bulk Update Files Metadata
+Performs a fast database-transaction-safe update across multiple file records owned by the user.
+
+- **URL**: `/api/storage/files/bulk-update`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Body**:
+  ```json
+  {
+    "fileIds": [12, 13, 14],
+    "folderId": 5,          // Optional. Move all to Folder ID 5 (or null for Root)
+    "isPrivate": true,       // Optional. Set all selected files to private
+    "isDeleted": false      // Optional. Restore all selected files
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "count": 3
+  }
+  ```
+
+---
+
+### 9d. Bulk Delete Files (Soft Delete)
+Soft-deletes multiple file records in batch using a single database operation.
+
+- **URL**: `/api/storage/files/bulk-delete`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Body**:
+  ```json
+  {
+    "fileIds": [12, 13, 14]
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Files deleted successfully",
+    "count": 3
+  }
+  ```
+
+---
+
+## 🗑️ Trash Bin Operations
+
+### 10. List Soft-Deleted Files
+Retrieves all files belonging to the authenticated user that are currently in the soft-deleted state (`isDeleted: true`).
+
+- **URL**: `/api/storage/files/deleted`
+- **Method**: `GET`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  [
+    {
+      "id": 12,
+      "originalName": "image.png",
+      "uniqueName": "1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png",
+      "size": 42104,
+      "isDeleted": true,
+      "uploadedAt": "2026-05-26T17:43:51.000Z"
+    }
+  ]
+  ```
+
+---
+
+### 11. Permanently Delete File
+Irreversibly unlinks the physical asset upload from disk, deletes its generated thumbnail image under `uploads/thumbnails/`, and deletes the database record row from MySQL.
+
+- **URL**: `/api/storage/files/:fileName/permanent`
+- **Method**: `DELETE`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "File permanently deleted"
+  }
+  ```
+
+---
+
+### 12. Empty Trash Bin
+Recursively unlinks every single physical asset and thumbnail file belonging to soft-deleted files of the authenticated owner, and clears their rows from the database in a transaction block.
+
+- **URL**: `/api/storage/files/empty-trash`
+- **Method**: `POST`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Trash emptied successfully",
+    "count": 14
+  }
+  ```
+
+---
+
+## ⚡ API Pagination Support
+Both the active folder details endpoint and general file list retrieval support dynamic pagination to optimize server request memory.
+
+### Parameters
+Pass these query parameters:
+*   `page`: (Optional integer, e.g. `page=2`. Default is `1`)
+*   `limit`: (Optional integer, e.g. `limit=15`. Default is `30`)
+
+### Endpoints Supported
+*   `GET /api/storage/files?page=1&limit=30`
+*   `GET /api/folder/:id?page=1&limit=30`
+
+### Success Response Layout
+When pagination query parameters are provided, the API automatically transitions to a structured JSON response schema:
+```json
+{
+  "files": [ ... ],
+  "hasMore": true,
+  "total": 143
+}
+```
+*(If no `page` query parameter is supplied, the endpoints gracefully fallback to their default flat array representation to maintain 100% backward-compatibility with older client code.)*
+
+---
+
+## 🔄 Resume-Capable Chunked Uploads
+Enables large files to be sliced into standard `10MB` blobs on the client side, sequentially uploaded, tracked, paused, and resumed cleanly.
+
+### 13. Get Upload Status
+Checks which chunk indices for a specific unique file signature have already been received and saved on the server. Allows the client to bypass already uploaded chunks during resume events.
+
+- **URL**: `/api/storage/upload/status`
+- **Method**: `GET`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Query Parameters**:
+  - `identifier`: (A unique hash signature string for the file, e.g. `${size}_${name_without_spaces}`)
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "uploadedChunks": [0, 1, 2, 3]
+  }
+  ```
+
+---
+
+### 14. Upload Chunk
+Uploads an individual byte-chunk of a file. When the final chunk index is received, the server automatically merges all chunks sequentially, generates image/video thumbnails, purges temporary slice folders, and registers the final file metadata in the MySQL database.
+
+- **URL**: `/api/storage/upload/chunk`
+- **Method**: `POST`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+  - *(Uses multipart form-data)*
+- **Body Fields**:
+  - `file`: (Binary data of the specific 10MB chunk)
+  - `identifier`: (Unique file identifier hash string)
+  - `chunkIndex`: (Integer index of current chunk starting at `0`)
+  - `totalChunks`: (Total number of slices)
+  - `originalName`: (Original filename, e.g. `heavy_movie.mp4`)
+  - `folderId`: (Optional. Parent directory ID)
+  - `isPrivate`: (Optional. Privacy indicator: `"true"` or `"false"`)
+
+- **Success Response for Intermediate Chunk (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "message": "Chunk 4 uploaded successfully"
+  }
+  ```
+
+- **Success Response for Final Chunk Merge (`201 Created`)**:
+  ```json
+  {
+    "success": true,
+    "message": "File uploaded and merged successfully",
+    "file": {
+      "id": 84,
+      "originalName": "heavy_movie.mp4",
+      "uniqueName": "1779841298412_a8b94.mp4",
+      "filePath": "http://localhost:8000/api/storage/files/1779841298412_a8b94.mp4",
+      "size": 145920310,
+      "uploadedAt": "2026-05-28T16:30:00.000Z",
+      "thumbnail": "http://localhost:8000/api/storage/thumbnails/thumb_1779841298412_a8b94.jpg"
+    }
+  }
+  ```

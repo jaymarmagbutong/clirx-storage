@@ -7,7 +7,11 @@ export const getFolderService = async ({ folderId, ownerId }) => {
             where: { id: folderId },
             include: {
                 children: true,
-                files: true
+                files: {
+                    where: {
+                        isDeleted: false
+                    }
+                }
             }
         });
 

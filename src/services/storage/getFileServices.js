@@ -17,7 +17,7 @@ export const getFile = async (fileName) => {
         where: { uniqueName: safeFileName }
     });
 
-    if (!fileRecord) {
+    if (!fileRecord || fileRecord.isDeleted) {
         throw new Error('File not found in database');
     }
 

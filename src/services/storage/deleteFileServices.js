@@ -27,23 +27,17 @@ export const deleteFile = async (fileName) => {
         throw new Error('File not found in database');
     }
 
-    // Delete physical file from disk
-    if (fs.existsSync(filePath)) {
-        try {
-            await unlink(filePath);
-        } catch (error) {
-            throw new Error('Failed to delete physical file: ' + error.message);
-        }
-    }
-
-    // Delete database record
+    // Soft delete database record (do not remove physical file or database row, just update isDeleted)
     try {
-        await prisma.file.delete({
+        await prisma.file.update({
             where: {
                 uniqueName: safeFileName,
             },
+            data: {
+                isDeleted: true,
+            },
         });
     } catch (error) {
-        throw new Error('Failed to delete file record from database: ' + error.message);
+        throw new Error('Failed to soft delete file record in database: ' + error.message);
     }
 };
