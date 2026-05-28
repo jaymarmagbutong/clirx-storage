@@ -19,7 +19,23 @@ export const getFolderService = async ({ folderId, ownerId }) => {
             return { success: false, error: 'Forbidden. You do not have access to this folder.' };
         }
 
-        return { success: true, folder };
+        // Build breadcrumbs parent folder list
+        const path = [];
+        let currentParentId = folder.parentId;
+        while (currentParentId) {
+            const parentFolder = await prisma.folder.findFirst({
+                where: { id: currentParentId, ownerId }
+            });
+            if (!parentFolder) break;
+            path.unshift({
+                id: parentFolder.id,
+                name: parentFolder.name,
+                parentId: parentFolder.parentId
+            });
+            currentParentId = parentFolder.parentId;
+        }
+
+        return { success: true, folder: { ...folder, path } };
     } catch (error) {
         return { success: false, error: error.message };
     }
