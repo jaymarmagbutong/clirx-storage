@@ -52,7 +52,7 @@ Verifies if a specific JWT token is active and valid.
       "iat": 1779817431,
       "exp": 2095393431
     }
-  }
+  } 
   ```
 
 #### Example Usage
