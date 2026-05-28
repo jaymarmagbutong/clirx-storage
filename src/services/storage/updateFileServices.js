@@ -3,6 +3,31 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
+ * Builds a sanitized update payload from raw request body fields.
+ * Only includes fields that were explicitly provided.
+ */
+export const buildUpdateData = ({ folderId, isPrivate, isDeleted }) => {
+    const data = {};
+    if (folderId !== undefined) data.folderId = folderId ? parseInt(folderId, 10) : null;
+    if (isPrivate !== undefined) data.isPrivate = !!isPrivate;
+    if (isDeleted !== undefined) data.isDeleted = !!isDeleted;
+    return data;
+};
+
+/**
+ * Validates and builds the update payload for bulk operations.
+ * Throws if fileIds is not an array.
+ */
+export const buildBulkUpdateData = ({ fileIds, folderId, isPrivate, isDeleted }) => {
+    if (!Array.isArray(fileIds)) {
+        const err = new Error('fileIds must be an array of file IDs');
+        err.status = 400;
+        throw err;
+    }
+    return buildUpdateData({ folderId, isPrivate, isDeleted });
+};
+
+/**
  * Updates a single file's fields (folderId, isPrivate, etc.).
  */
 export const updateFile = async (uniqueName, data) => {
