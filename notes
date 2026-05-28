@@ -1,7 +1,9 @@
 app hosting  https://clirx-storage.onrender.com
 app database https://docs.railway.com/databases/database-view
+app api  https://clirx-storage.onrender.com/api/
+
 
 {
-    "email": "magbutongjaymar@gmail.com",
-    "password": "jaymar123"
-  }
+  "email": "magbutongjaymar@gmail.com",
+  "password": "jaymar123"
+}

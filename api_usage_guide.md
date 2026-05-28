@@ -173,6 +173,68 @@ curl -X POST http://localhost:8000/api/folder/create \
 
 ---
 
+### 5b. List All Folders
+Retrieves all folders owned by the authenticated user.
+
+- **URL**: `/api/folder/list`
+- **Method**: `GET`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "folders": [
+      {
+        "id": 5,
+        "name": "Documents",
+        "parentId": null,
+        "ownerId": 1,
+        "createdAt": "2026-05-26T17:43:51.213Z",
+        "updatedAt": "2026-05-26T17:43:51.213Z"
+      }
+    ]
+  }
+  ```
+
+#### Example Usage
+```bash
+curl http://localhost:8000/api/folder/list \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+### 5c. Get Folder (With Contents)
+Retrieves the details of a specific folder along with its subfolders (`children`) and files (`files`).
+
+- **URL**: `/api/folder/:id`
+- **Method**: `GET`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "folder": {
+      "id": 5,
+      "name": "Documents",
+      "parentId": null,
+      "ownerId": 1,
+      "createdAt": "2026-05-26T17:43:51.213Z",
+      "updatedAt": "2026-05-26T17:43:51.213Z",
+      "children": [],
+      "files": []
+    }
+  }
+  ```
+
+#### Example Usage
+```bash
+curl http://localhost:8000/api/folder/5 \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
 ## 💾 File Operations
 
 ### 6. Upload File(s)
@@ -186,6 +248,11 @@ Uploads one or more physical files to the server. Files are stored inside the `u
 - **Body Fields**:
   - `file`: (Binary data of file to upload)
   - `folderId`: (Optional integer ID of target folder to place file in)
+  - `isPrivate`: (Optional boolean or string `"true"` / `"false"`. If set to `true`, only the owner can access it)
+
+> [!TIP]
+> The `isPrivate` parameter can also be passed as a query string parameter (e.g. `/api/storage/upload?isPrivate=true`).
+
 - **Success Response (`201 Created`)**:
   ```json
   {
@@ -205,12 +272,20 @@ Uploads one or more physical files to the server. Files are stored inside the `u
   }
   ```
 
-#### Example Usage (using curl)
+#### Example Usage (Public Upload)
 ```bash
 curl -X POST http://localhost:8000/api/storage/upload \
      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -F "file=@/path/to/local/image.png" \
      -F "folderId=5"
+```
+
+#### Example Usage (Private Upload)
+```bash
+curl -X POST http://localhost:8000/api/storage/upload \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -F "file=@/path/to/local/private_doc.pdf" \
+     -F "isPrivate=true"
 ```
 
 ---
@@ -252,11 +327,22 @@ Streams or downloads a specific physical file from the storage.
 - **URL**: `/api/storage/files/:fileName`
 - **Method**: `GET`
 - **Headers**:
-  - `Authorization: Bearer YOUR_JWT_TOKEN`
+  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private files)*
+
+> [!IMPORTANT]
+> - **Public Files**: Anyone can access public files without providing the `Authorization` header.
+> - **Private Files**: Requires the `Authorization` header with a valid JWT token. Access is strictly authorized ONLY if the authenticated user's ID matches the file owner's ID. Otherwise, a `401 Unauthorized` or `403 Forbidden` response is returned.
+
 - **Success Response (`200 OK`)**:
   *(Raw file stream returned directly with appropriate Mimetype header)*
 
-#### Example Usage
+#### Example Usage (Public File)
+```bash
+curl http://localhost:8000/api/storage/files/1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png \
+     --output downloaded_image.png
+```
+
+#### Example Usage (Private File)
 ```bash
 curl http://localhost:8000/api/storage/files/1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png \
      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
