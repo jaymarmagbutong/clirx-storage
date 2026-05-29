@@ -19,6 +19,7 @@ import {
     listDeletedFiles as listDeletedFilesService,
     permanentlyDeleteFile as permanentlyDeleteFileService,
     emptyTrash as emptyTrashService,
+    bulkPermanentlyDeleteFiles as bulkPermanentlyDeleteFilesService,
 } from '../services/storage/trashFileServices.js';
 import {
     getChunkStatus as getChunkStatusService,
@@ -167,6 +168,20 @@ export const permanentlyDeleteFile = async (req, res) => {
         const ownerId = req.user?.userId ? parseInt(req.user.userId, 10) : 1;
         await permanentlyDeleteFileService(req.params.fileName, ownerId);
         res.status(200).send({ message: 'File permanently deleted' });
+    } catch (error) {
+        res.status(500).send({ error: error.message });
+    }
+};
+
+export const bulkPermanentlyDeleteFiles = async (req, res) => {
+    try {
+        const { fileIds } = req.body;
+        if (!Array.isArray(fileIds)) {
+            return res.status(400).send({ error: 'fileIds must be an array of file IDs' });
+        }
+        const ownerId = req.user?.userId ? parseInt(req.user.userId, 10) : 1;
+        const result = await bulkPermanentlyDeleteFilesService(fileIds, ownerId);
+        res.status(200).send({ message: 'Files permanently deleted successfully', ...result });
     } catch (error) {
         res.status(500).send({ error: error.message });
     }

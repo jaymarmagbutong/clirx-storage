@@ -10,6 +10,7 @@ import {
     bulkDeleteFiles,
     listDeletedFiles,
     permanentlyDeleteFile,
+    bulkPermanentlyDeleteFiles,
     emptyTrash,
     getUploadStatus,
     uploadChunk,
@@ -23,6 +24,7 @@ router.post('/upload', authenticate, uploadFile);
 router.get('/files', authenticate, listFiles);
 router.get('/files/deleted', authenticate, listDeletedFiles);
 router.delete('/files/:fileName/permanent', authenticate, permanentlyDeleteFile);
+router.post('/files/bulk-permanent', authenticate, bulkPermanentlyDeleteFiles);
 router.post('/files/empty-trash', authenticate, emptyTrash);
 router.get('/upload/status', authenticate, getUploadStatus);
 router.post('/upload/chunk', authenticate, uploadChunk);

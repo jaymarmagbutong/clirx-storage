@@ -132,3 +132,62 @@ export const emptyTrash = async (ownerId) => {
         throw new Error('Failed to empty trash in database: ' + error.message);
     }
 };
+
+/**
+ * Permanently deletes multiple files for a user (physical and database).
+ */
+export const bulkPermanentlyDeleteFiles = async (fileIds, ownerId) => {
+    try {
+        const ids = fileIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        if (ids.length === 0) {
+            return { count: 0 };
+        }
+
+        const ownerIdParsed = parseInt(ownerId, 10);
+
+        // Find all files matching the given IDs and ownerId
+        const files = await prisma.file.findMany({
+            where: {
+                id: { in: ids },
+                ownerId: ownerIdParsed,
+            },
+        });
+
+        for (const file of files) {
+            // Delete physical file from disk
+            const filePath = path.join(uploadDirectory, file.uniqueName);
+            if (fs.existsSync(filePath)) {
+                try {
+                    await unlink(filePath);
+                } catch (err) {
+                    console.error(`Failed to bulk permanently delete file ${file.uniqueName}:`, err.message);
+                }
+            }
+
+            // Delete thumbnail from disk if exists
+            if (file.thumbnail) {
+                const thumbName = path.basename(file.thumbnail);
+                const thumbPath = path.join(thumbDirectory, thumbName);
+                if (fs.existsSync(thumbPath)) {
+                    try {
+                        await unlink(thumbPath);
+                    } catch (err) {
+                        console.error(`Failed to bulk permanently delete thumbnail for ${file.uniqueName}:`, err.message);
+                    }
+                }
+            }
+        }
+
+        // Delete database records
+        const result = await prisma.file.deleteMany({
+            where: {
+                id: { in: ids },
+                ownerId: ownerIdParsed,
+            },
+        });
+        return result;
+    } catch (error) {
+        throw new Error('Failed to bulk permanently delete files: ' + error.message);
+    }
+};
+
