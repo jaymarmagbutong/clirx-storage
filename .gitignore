@@ -4,3 +4,4 @@ node_modules
 uploads
 migrations
 .env.local
+.env.local

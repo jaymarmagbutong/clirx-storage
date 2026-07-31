@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { PrismaClient } from '@prisma/client';
+import { permanentlyDeleteFolderRecursive } from '../folder/deleteFolder.js';
 
 const prisma = new PrismaClient();
 const unlink = promisify(fs.unlink);
@@ -10,19 +11,43 @@ const uploadDirectory = path.resolve('uploads');
 const thumbDirectory = path.resolve('uploads/thumbnails');
 
 /**
- * Lists all soft-deleted files for a user.
+ * Lists all soft-deleted files and folders for a user.
  */
 export const listDeletedFiles = async (ownerId) => {
     try {
-        return await prisma.file.findMany({
+        const ownerIdParsed = parseInt(ownerId, 10);
+        
+        // Find deleted folders at the root of deletion
+        const folders = await prisma.folder.findMany({
             where: {
                 isDeleted: true,
-                ownerId: parseInt(ownerId, 10),
+                ownerId: ownerIdParsed,
+                OR: [
+                    { parentId: null },
+                    { parent: { isDeleted: false } }
+                ]
             },
             orderBy: {
-                uploadedAt: 'desc',
-            },
+                createdAt: 'desc'
+            }
         });
+
+        // Find deleted files at the root of deletion
+        const files = await prisma.file.findMany({
+            where: {
+                isDeleted: true,
+                ownerId: ownerIdParsed,
+                OR: [
+                    { folderId: null },
+                    { folder: { isDeleted: false } }
+                ]
+            },
+            orderBy: {
+                uploadedAt: 'desc'
+            }
+        });
+
+        return { files, folders };
     } catch (error) {
         throw new Error('Failed to list deleted files: ' + error.message);
     }
@@ -82,11 +107,28 @@ export const permanentlyDeleteFile = async (fileName, ownerId) => {
 };
 
 /**
- * Empties all soft-deleted files for a user.
+ * Empties all soft-deleted files and folders for a user.
  */
 export const emptyTrash = async (ownerId) => {
     const ownerIdParsed = parseInt(ownerId, 10);
 
+    // 1. Permanently delete all root-level deleted folders and their contents
+    const rootDeletedFolders = await prisma.folder.findMany({
+        where: {
+            isDeleted: true,
+            ownerId: ownerIdParsed,
+            OR: [
+                { parentId: null },
+                { parent: { isDeleted: false } }
+            ]
+        }
+    });
+
+    for (const folder of rootDeletedFolders) {
+        await permanentlyDeleteFolderRecursive(folder.id, ownerIdParsed);
+    }
+
+    // 2. Permanently delete any remaining soft-deleted files (not inside deleted folders)
     const deletedFiles = await prisma.file.findMany({
         where: {
             isDeleted: true,
@@ -119,7 +161,7 @@ export const emptyTrash = async (ownerId) => {
         }
     }
 
-    // Bulk delete database records
+    // Bulk delete database records for remaining files
     try {
         const result = await prisma.file.deleteMany({
             where: {

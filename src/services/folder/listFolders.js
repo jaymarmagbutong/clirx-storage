@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 export const listFoldersService = async ({ ownerId }) => {
     try {
         const folders = await prisma.folder.findMany({
-            where: { ownerId }
+            where: { ownerId, isDeleted: false }
         });
         return { success: true, folders };
     } catch (error) {

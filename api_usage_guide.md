@@ -65,7 +65,7 @@ curl http://localhost:8000/api/auth/verify/YOUR_JWT_TOKEN
 ### 3. Sign Out (Revoke Token)
 Blacklists a valid JWT token to prevent future requests.
 
-- **URL**: `/api/auth/logout`
+- **URL**: `/api/auth/logout/` (or `/api/auth/logout`)
 - **Method**: `POST`
 - **Headers**: `Content-Type: application/json`
 - **Body**:
@@ -280,8 +280,8 @@ curl -X PATCH http://localhost:8000/api/folder/5 \
 
 ---
 
-### 5e. Delete Folder (Recursive)
-Permanently unlinks all physical file assets in this folder and its subdirectories from disk, and deletes the Prisma database records in cascade order.
+### 5e. Delete Folder (Recursive - Soft Delete)
+Soft-deletes the folder structure. The database record is marked as deleted (`isDeleted: true`), and all nested subfolders and files are also soft-deleted.
 
 - **URL**: `/api/folder/:id`
 - **Method**: `DELETE`
@@ -297,6 +297,28 @@ Permanently unlinks all physical file assets in this folder and its subdirectori
 #### Example Usage
 ```bash
 curl -X DELETE http://localhost:8000/api/folder/5 \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+### 5f. Permanently Delete Folder (Recursive)
+Permanently unlinks all physical file assets in this folder and its subdirectories from disk, and deletes the database records of the folders, files, and versions.
+
+- **URL**: `/api/folder/:id/permanent`
+- **Method**: `DELETE`
+- **Headers**:
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Folder permanently deleted successfully"
+  }
+  ```
+
+#### Example Usage
+```bash
+curl -X DELETE http://localhost:8000/api/folder/5/permanent \
      -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -393,12 +415,14 @@ Streams or downloads a specific physical file from the storage.
 
 - **URL**: `/api/storage/files/:fileName`
 - **Method**: `GET`
+- **Query Parameters**:
+  - `token`: (Optional. Alternative token query parameter for private file authorization, e.g. `?token=YOUR_JWT_TOKEN`)
 - **Headers**:
-  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private files)*
+  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private files if token query parameter is not provided)*
 
 > [!IMPORTANT]
-> - **Public Files**: Anyone can access public files without providing the `Authorization` header.
-> - **Private Files**: Requires the `Authorization` header with a valid JWT token. Access is strictly authorized ONLY if the authenticated user's ID matches the file owner's ID. Otherwise, a `401 Unauthorized` or `403 Forbidden` response is returned.
+> - **Public Files**: Anyone can access public files without providing the `Authorization` header or token.
+> - **Private Files**: Requires the `Authorization` header with a valid JWT token or the `token` query parameter. Access is strictly authorized ONLY if the authenticated user's ID matches the file owner's ID. Otherwise, a `401 Unauthorized` or `403 Forbidden` response is returned.
 
 - **Success Response (`200 OK`)**:
   *(Raw file stream returned directly with appropriate Mimetype header)*
@@ -423,11 +447,13 @@ Streams the pre-generated small-size thumbnail image (`200px` width) for a speci
 
 - **URL**: `/api/storage/thumbnails/:fileName`
 - **Method**: `GET`
+- **Query Parameters**:
+  - `token`: (Optional. Alternative token query parameter for private thumbnail authorization, e.g. `?token=YOUR_JWT_TOKEN`)
 - **Headers**:
-  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private file thumbnails)*
+  - `Authorization: Bearer YOUR_JWT_TOKEN` *(Required ONLY for private file thumbnails if token query parameter is not provided)*
 
 > [!IMPORTANT]
-> - **Privacy Enforcement**: Private file thumbnails fully inherit the owner-only permission lock of the main file. Active JWT headers are verified, returning a `403 Forbidden` for other users or a `401 Unauthorized` if headers are omitted.
+> - **Privacy Enforcement**: Private file thumbnails fully inherit the owner-only permission lock of the main file. Active JWT headers or query parameters are verified, returning a `403 Forbidden` for other users or a `401 Unauthorized` if no credentials are provided.
 
 - **Success Response (`200 OK`)**:
   *(Inline JPEG image stream of the scaled thumbnail)*
@@ -556,10 +582,34 @@ Soft-deletes multiple file records in batch using a single database operation.
 
 ---
 
+### 9e. Bulk Permanently Delete Files
+Permanently deletes multiple file records from both the disk and database in a batch transaction.
+
+- **URL**: `/api/storage/files/bulk-permanent`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_JWT_TOKEN`
+- **Body**:
+  ```json
+  {
+    "fileIds": [12, 13, 14]
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Files permanently deleted successfully",
+    "count": 3
+  }
+  ```
+
+---
+
 ## 🗑️ Trash Bin Operations
 
-### 10. List Soft-Deleted Files
-Retrieves all files belonging to the authenticated user that are currently in the soft-deleted state (`isDeleted: true`).
+### 10. List Soft-Deleted Files & Folders
+Retrieves all files and folders belonging to the authenticated user that are currently in the soft-deleted state (`isDeleted: true`).
 
 - **URL**: `/api/storage/files/deleted`
 - **Method**: `GET`
@@ -567,16 +617,29 @@ Retrieves all files belonging to the authenticated user that are currently in th
   - `Authorization: Bearer YOUR_JWT_TOKEN`
 - **Success Response (`200 OK`)**:
   ```json
-  [
-    {
-      "id": 12,
-      "originalName": "image.png",
-      "uniqueName": "1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png",
-      "size": 42104,
-      "isDeleted": true,
-      "uploadedAt": "2026-05-26T17:43:51.000Z"
-    }
-  ]
+  {
+    "files": [
+      {
+        "id": 12,
+        "originalName": "image.png",
+        "uniqueName": "1779817431230_ab79473a-5c9c-41d9-982e-97cdebd49a0a.png",
+        "size": 42104,
+        "isDeleted": true,
+        "uploadedAt": "2026-05-26T17:43:51.000Z"
+      }
+    ],
+    "folders": [
+      {
+        "id": 5,
+        "name": "Documents",
+        "parentId": null,
+        "ownerId": 1,
+        "isDeleted": true,
+        "createdAt": "2026-05-26T17:43:51.213Z",
+        "updatedAt": "2026-05-26T17:43:51.213Z"
+      }
+    ]
+  }
   ```
 
 ---

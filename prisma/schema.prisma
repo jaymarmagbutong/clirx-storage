@@ -13,9 +13,12 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isVerified Boolean  @default(false)
+  verificationToken String?
 
   files     File[]
   folders   Folder[]
+  apiTokens ApiToken[]
 }
 
 model Folder {
@@ -25,6 +28,7 @@ model Folder {
   ownerId   Int
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  isDeleted Boolean   @default(false)
  
   owner     User      @relation(fields: [ownerId], references: [id])
   parent    Folder?   @relation("FolderChildren", fields: [parentId], references: [id])
@@ -68,3 +72,16 @@ model FileVersion {
 
   @@unique([fileId, versionNum])
 }
+
+model ApiToken {
+  id        Int      @id @default(autoincrement())
+  name      String
+  token     String   @unique @db.VarChar(500)
+  userId    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+

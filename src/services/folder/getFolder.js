@@ -3,25 +3,37 @@ const prisma = new PrismaClient();
 
 export const getFolderService = async ({ folderId, ownerId }) => {
     try {
+        // 1. Get folder first to check ownership and deletion status
+        const folderBase = await prisma.folder.findUnique({
+            where: { id: folderId }
+        });
+
+        if (!folderBase) {
+            return { success: false, error: 'Folder not found' };
+        }
+
+        if (folderBase.ownerId !== ownerId) {
+            return { success: false, error: 'Forbidden. You do not have access to this folder.' };
+        }
+
+        const isFolderDeleted = folderBase.isDeleted;
+
+        // 2. Fetch the folder with its matching children
         const folder = await prisma.folder.findUnique({
             where: { id: folderId },
             include: {
-                children: true,
+                children: {
+                    where: {
+                        isDeleted: isFolderDeleted
+                    }
+                },
                 files: {
                     where: {
-                        isDeleted: false
+                        isDeleted: isFolderDeleted
                     }
                 }
             }
         });
-
-        if (!folder) {
-            return { success: false, error: 'Folder not found' };
-        }
-
-        if (folder.ownerId !== ownerId) {
-            return { success: false, error: 'Forbidden. You do not have access to this folder.' };
-        }
 
         // Build breadcrumbs parent folder list
         const path = [];
